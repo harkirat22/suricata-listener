@@ -3,8 +3,8 @@ package main
 import (
 	"log"
 
-	"github.com/suricata-listener/pkg/policyevaluator"
-	"github.com/your-repo-name/pkg/normalizer"
+	"github.com/harkirat22/suricata-listener/pkg/normalizer"
+	"github.com/harkirat22/suricata-listener/pkg/policyevaluator"
 )
 
 const logFilePath = "/path/to/fast.log"

@@ -3,8 +3,8 @@ package policyevaluator
 import (
 	"context"
 
+	"github.com/harkirat22/suricata-listener/pkg/normalizer"
 	"github.com/open-policy-agent/opa/rego"
-	"github.com/your-repo-name/pkg/normalizer"
 )
 
 // Evaluate evaluates the log entries against the provided OPA policy.
