@@ -14,13 +14,11 @@ RUN go mod download
 COPY . .
 
 # Build the application
-RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o suricata-listener ./...
+RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o suricata-listener
 
 # Start a new stage from scratch
 FROM alpine:latest  
 
-# Set necessary environment variables needed by our Go program 
-ENV TZ=Asia/Kolkata
 
 # Copy the compiled application from the builder stage
 COPY --from=builder /app/suricata-listener /suricata-listener
