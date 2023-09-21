@@ -24,7 +24,7 @@ func WatchLog(filePath string, processNewEntries func([]LogEntry)) {
 	defer file.Close()
 
 	// Go to the end of the file immediately upon startup to only get new entries.
-	file.Seek(0, io.SeekEnd)
+	lastPosition, _ := file.Seek(0, io.SeekEnd)
 
 	done := make(chan bool)
 	go func() {
@@ -35,16 +35,14 @@ func WatchLog(filePath string, processNewEntries func([]LogEntry)) {
 					return
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					entries, err := ReadLogEntries(file)
+					entries, newPosition, err := ReadLogEntries(file, lastPosition)
 					if err != nil {
 						// Consider logging or handling this error
 						fmt.Println("Error reading log entries:", err)
 					} else if len(entries) > 0 {
 						processNewEntries(entries)
+						lastPosition = newPosition
 					}
-
-					// Reset the file pointer to the end for the next entries.
-					file.Seek(0, io.SeekEnd)
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
