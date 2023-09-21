@@ -25,7 +25,7 @@ func Evaluate(logEntries []normalizer.LogEntry, policy string) ([]normalizer.Log
 
 	var violations []normalizer.LogEntry
 	for _, entry := range logEntries {
-		// Here, we use the entry details for evaluation. Adjust as needed.
+		// Here, we use the entry as input for evaluation.
 		results, err := query.Eval(ctx, rego.EvalInput(entry))
 		if err != nil {
 			return nil, err

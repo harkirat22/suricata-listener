@@ -2,39 +2,51 @@ package main
 
 import (
 	"log"
+	"os"
+	"time"
 
 	"github.com/harkirat22/suricata-listener/pkg/normalizer"
 	"github.com/harkirat22/suricata-listener/pkg/policyevaluator"
+	whipper "github.com/harkirat22/suricata-listener/pkg/whiper"
 )
 
-const logFilePath = "/path/to/fast.log"
-const policy = `
-package suricata
-
-default alert = false
-
-# Define your policy logic here.
-# E.g., if entry.Details contains a specific string, trigger an alert.
-alert {
-	entry := input.Details
-	entry == "specific string to watch"
-}
-`
+const logFilePath = "/var/log/suricata/eve.json"
+const regoPolicyPath = "policies/13666.rego"
 
 func main() {
-	entries, err := normalizer.Normalize(logFilePath)
+	whip, err := whipper.NewWhipper()
 	if err != nil {
-		log.Fatalf("Error normalizing log: %v", err)
+		log.Fatalf("Failed to initialize whipper: %v", err)
 	}
 
-	violations, err := policyevaluator.Evaluate(entries, policy)
+	// Start watching the eve.json file.
+	go normalizer.WatchLog(logFilePath, func(entries []normalizer.LogEntry) {
+		processLogEntries(entries, whip)
+	})
+
+	// Keep the main function alive indefinitely.
+	select {}
+}
+
+func processLogEntries(entries []normalizer.LogEntry, whip *whipper.Whipper) {
+	// Read the policy from the .rego file.
+	policy, err := os.ReadFile(regoPolicyPath)
+	if err != nil {
+		log.Fatalf("Failed to read policy: %v", err)
+	}
+
+	violations, err := policyevaluator.Evaluate(entries, string(policy))
 	if err != nil {
 		log.Fatalf("Error evaluating policy: %v", err)
 	}
 
 	for _, v := range violations {
-		// Logic to kill the pod using the whipper package.
-		// Example: whipper.KillPod("pod-name", "namespace")
-		log.Printf("Policy violation: %v", v)
+		podName, namespace, err := whip.FindPodByIP(v.SrcIP)
+		if err != nil {
+			log.Printf("Error finding pod with IP %s: %v", v.SrcIP, err)
+			continue
+		}
+		whip.KillPod(podName, namespace)
+		log.Printf("Policy violation detected and pod %s/%s terminated at %s: %v", namespace, podName, time.Now().Format("2006-01-02 15:04:05"), v.Alert.Signature)
 	}
 }

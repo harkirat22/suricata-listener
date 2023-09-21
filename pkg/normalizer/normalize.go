@@ -1,53 +1,44 @@
 package normalizer
 
 import (
-	"bufio"
-	"log"
+	"encoding/json"
 	"os"
-	"strings"
 )
 
+// Update the LogEntry to match the structure of an alert in eve.json
 type LogEntry struct {
-	Timestamp string
-	Alert     string
-	Details   string
+	Type      string `json:"type"`
+	Timestamp string `json:"timestamp"`
+	SrcIP     string `json:"src_ip"`
+	Alert     Alert  `json:"alert"`
 }
 
-func ProcessNewLogEntries(filePath string) {
-	file, err := os.Open(filePath)
+type Alert struct {
+	Signature string `json:"signature"`
+}
+
+// ReadLogEntries reads the log entries from a file and returns them as a slice.
+func ReadLogEntries(file *os.File) ([]LogEntry, error) {
+	// Step 1: Read the entire file into memory.
+	fileContent, err := os.ReadFile(file.Name())
 	if err != nil {
-		// handle error
-		return
+		return nil, err
 	}
-	defer file.Close()
 
-	// Use a file offset or other mechanism to remember the last processed position
-	// For simplicity, here we read the entire file, but in reality, you'll want to
-	// only read new entries since the last processed position.
-
-	entries, _ := readLogEntries(file)
-
-	// Further processing can be done on the entries if needed.
-	for _, entry := range entries {
-		// For example: print them out for now
-		log.Printf("%s: %s - %s", entry.Timestamp, entry.Alert, entry.Details)
-	}
-}
-
-func readLogEntries(file *os.File) ([]LogEntry, error) {
+	// Step 2: Unmarshal the file content into a slice of LogEntry.
 	var entries []LogEntry
-	scanner := bufio.NewScanner(file)
-	for scanner.Scan() {
-		line := scanner.Text()
-		parts := strings.SplitN(line, " ", 3)
-		if len(parts) >= 3 {
-			entry := LogEntry{
-				Timestamp: parts[0],
-				Alert:     parts[1],
-				Details:   parts[2],
-			}
-			entries = append(entries, entry)
+	err = json.Unmarshal(fileContent, &entries)
+	if err != nil {
+		return nil, err
+	}
+
+	// Step 3: Filter for entries of type "alert".
+	filteredEntries := make([]LogEntry, 0)
+	for _, entry := range entries {
+		if entry.Type == "alert" {
+			filteredEntries = append(filteredEntries, entry)
 		}
 	}
-	return entries, scanner.Err()
+
+	return filteredEntries, nil
 }

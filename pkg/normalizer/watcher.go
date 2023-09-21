@@ -1,17 +1,30 @@
 package normalizer
 
 import (
-	"log"
+	"fmt"
+	"io"
+	"os"
 
 	"github.com/fsnotify/fsnotify"
 )
 
-func WatchFile(logFilePath string, processFunc func()) {
+func WatchLog(filePath string, processNewEntries func([]LogEntry)) {
 	watcher, err := fsnotify.NewWatcher()
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Error creating watcher:", err)
+		return
 	}
 	defer watcher.Close()
+
+	file, err := os.Open(filePath)
+	if err != nil {
+		fmt.Println("Error opening log file:", err)
+		return
+	}
+	defer file.Close()
+
+	// Go to the end of the file immediately upon startup to only get new entries.
+	file.Seek(0, io.SeekEnd)
 
 	done := make(chan bool)
 	go func() {
@@ -22,21 +35,30 @@ func WatchFile(logFilePath string, processFunc func()) {
 					return
 				}
 				if event.Op&fsnotify.Write == fsnotify.Write {
-					log.Println("Modified file:", event.Name)
-					processFunc() // Call the provided function to process new log entries.
+					entries, err := ReadLogEntries(file)
+					if err != nil {
+						// Consider logging or handling this error
+						fmt.Println("Error reading log entries:", err)
+					} else if len(entries) > 0 {
+						processNewEntries(entries)
+					}
+
+					// Reset the file pointer to the end for the next entries.
+					file.Seek(0, io.SeekEnd)
 				}
 			case err, ok := <-watcher.Errors:
 				if !ok {
 					return
 				}
-				log.Println("Error:", err)
+				fmt.Println("Error:", err)
 			}
 		}
 	}()
 
-	err = watcher.Add(logFilePath)
+	err = watcher.Add(filePath)
 	if err != nil {
-		log.Fatal(err)
+		fmt.Println("Error adding file to watcher:", err)
+		return
 	}
 	<-done
 }
