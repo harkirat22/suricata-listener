@@ -11,7 +11,7 @@ import (
 )
 
 const logFilePath = "/var/log/suricata/eve.json"
-const regoPolicyPath = "policies/13666.rego"
+const regoPolicyPath = "/policies/13666.rego"
 
 func main() {
 	whip, err := whipper.NewWhipper()

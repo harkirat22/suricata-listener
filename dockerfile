@@ -19,9 +19,11 @@ RUN CGO_ENABLED=0 GOOS=linux GOARCH=amd64 go build -a -o suricata-listener
 # Start a new stage from scratch
 FROM alpine:latest  
 
-
 # Copy the compiled application from the builder stage
 COPY --from=builder /app/suricata-listener /suricata-listener
+
+# Copy the policies directory from the builder stage
+COPY --from=builder /app/policies /policies
 
 # Run the application
 CMD ["/suricata-listener"]
